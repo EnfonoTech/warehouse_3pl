@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -184,32 +185,59 @@ def make_delivery_note(job_name):
     return dn
 
 
+# Service item per billable activity. A Sales Invoice Item without an item_code cannot
+# resolve an income account, so ERPNext refuses the invoice with "Income Account None does
+# not belong to Company X" -- the invoice used to be built unsaveable and the failure only
+# appeared when the user pressed Save.
+ACTIVITY_ITEM_PREFIX = "3PL-"
+
+
+def activity_item_code(activity_type):
+    """Conventional service item code for a billable activity."""
+    return ACTIVITY_ITEM_PREFIX + frappe.scrub(activity_type).upper().replace("_", "-")
+
+
 @frappe.whitelist()
 def make_sales_invoice(job_name):
     """Create a Sales Invoice from billing transactions linked to this job."""
     job = frappe.get_doc("Warehouse Job Record", job_name)
+
+    bts = frappe.get_all("Billing Transaction",
+        filters={"warehouse_job": job_name, "invoiced": 0},
+        fields=["name", "activity_type", "qty", "rate", "amount", "uom", "item_code"])
+
+    if not bts:
+        frappe.throw(_("No uninvoiced billing transactions are linked to {0}.").format(job_name))
+
+    # Resolve every line to a real Item before building anything, so a missing service item
+    # is one clear message up front rather than a refusal at save time.
+    resolved, missing = [], set()
+    for bt in bts:
+        code = bt.item_code or activity_item_code(bt.activity_type)
+        if not frappe.db.exists("Item", code):
+            missing.add(code)
+        resolved.append((bt, code))
+
+    if missing:
+        frappe.throw(
+            _("Create a service Item for each billable activity first. Missing: {0}").format(
+                ", ".join(sorted(missing))
+            ),
+            title=_("Service items not set up"),
+        )
 
     si = frappe.new_doc("Sales Invoice")
     si.customer = job.client
     si.company = job.company
     si.custom_warehouse_job = job.name
 
-    # Get billing transactions for this job
-    bts = frappe.get_all("Billing Transaction",
-        filters={"warehouse_job": job_name},
-        fields=["name", "activity_type", "qty", "rate", "amount", "uom"])
-
-    for bt in bts:
+    for bt, code in resolved:
         si.append("items", {
-            "item_name": bt.activity_type,
+            "item_code": code,
             "description": f"{bt.activity_type} - {bt.qty} {bt.uom}",
             "qty": bt.qty or 1,
             "rate": bt.rate or 0,
-            "uom": "Nos",
         })
-
-    if not si.items:
-        frappe.msgprint("No billing transactions found for this job. You can add items manually.")
 
     return si
 

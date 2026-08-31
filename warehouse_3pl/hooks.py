@@ -99,6 +99,16 @@ website_route_rules = [
 
 after_install = "warehouse_3pl.warehouse_3pl.custom_fields.setup.setup_custom_fields"
 
+# Sales Invoice belongs to ERPNext, so extending it belongs in doc_events rather than in a
+# controller. Keeps Billing Transaction.invoiced / .sales_invoice truthful, which is what
+# stops the same receipt or pick being billed twice.
+doc_events = {
+	"Sales Invoice": {
+		"on_submit": "warehouse_3pl.warehouse_3pl.utils.invoice_hooks.mark_billing_transactions_invoiced",
+		"on_cancel": "warehouse_3pl.warehouse_3pl.utils.invoice_hooks.release_billing_transactions",
+	},
+}
+
 # Uninstallation
 # ------------
 
