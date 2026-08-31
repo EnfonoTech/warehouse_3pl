@@ -41,7 +41,11 @@ def make_receiving(source_name, target_doc=None):
                     "client": "client",
                     "warehouse_job": "warehouse_job",
                 },
-                "field_no_map": ["status"],
+                # naming_series and amended_from must never carry over. Frappe's mapper
+                # copies any same-named field that is not marked no_copy, which is how a
+                # Receiving created from an ASN ended up named ASN-2026-00002 with an
+                # ASN-.YYYY.-.##### series that is not even in its own field options.
+                "field_no_map": ["status", "naming_series", "amended_from"],
             },
             "ASN Line": {
                 "doctype": "Receiving Line",
