@@ -1,0 +1,266 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ _("Warehouse Operating Guide") }}{% endblock %}
+
+{% block head_include %}
+<style>
+  .wg { --wg-accent:#0F6E5C; --wg-line:#d8ded9; --wg-soft:#f2f5f2; --wg-muted:#66756d;
+        max-width: 62rem; margin: 0 auto; padding: 0 1rem 4rem; }
+  .wg h1 { font-size: 2rem; margin: 1.5rem 0 .35rem; letter-spacing:-.01em; }
+  .wg .wg-lede { color: var(--wg-muted); font-size:1.05rem; max-width:52rem; margin:0 0 1.5rem; }
+  .wg h2 { font-size:1.3rem; margin:2.4rem 0 .5rem; padding-bottom:.35rem;
+           border-bottom:2px solid var(--wg-accent); }
+  .wg h3 { font-size:1.05rem; margin:1.4rem 0 .3rem; }
+  .wg p, .wg li { line-height:1.62; }
+  .wg code { background:var(--wg-soft); padding:.1em .35em; border-radius:3px; font-size:.88em; }
+  .wg table { width:100%; border-collapse:collapse; margin:.6rem 0 1.2rem; font-size:.92rem; }
+  .wg th, .wg td { text-align:left; padding:.45rem .7rem; border-bottom:1px solid var(--wg-line); }
+  .wg thead th { background:var(--wg-soft); font-weight:600; border-bottom:2px solid var(--wg-line); }
+  .wg .wg-scroll { overflow-x:auto; }
+  .wg .wg-strip { display:grid; gap:1px; background:var(--wg-line);
+                  grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));
+                  border:1px solid var(--wg-line); margin:0 0 1.5rem; }
+  .wg .wg-strip div { background:#fff; padding:.6rem .75rem; }
+  .wg .wg-strip dt { font-size:.68rem; text-transform:uppercase; letter-spacing:.09em;
+                     color:var(--wg-muted); margin:0 0 .2rem; }
+  .wg .wg-strip dd { margin:0; font-size:1.2rem; font-weight:600; font-variant-numeric:tabular-nums; }
+  .wg .wg-step { display:grid; grid-template-columns:2.4rem 1fr; gap:0 .9rem; margin-bottom:1.3rem; }
+  .wg .wg-step > .n { width:2.4rem; height:2.4rem; border-radius:50%; display:grid;
+                      place-items:center; border:2px solid var(--wg-accent);
+                      color:var(--wg-accent); font-weight:700; }
+  .wg .wg-step h3 { margin:.25rem 0 .2rem; }
+  .wg .wg-auto { background:var(--wg-soft); border-left:3px solid var(--wg-accent);
+                 padding:.5rem .8rem; margin:.5rem 0 0; font-size:.93rem; }
+  .wg .wg-auto ul { margin:.2rem 0 0; padding-left:1.1rem; }
+  .wg .wg-note { border:1px solid var(--wg-line); border-left:4px solid #A8620A;
+                 padding:.8rem 1rem; margin:0 0 1.3rem; background:#fff; }
+  .wg .wg-note.ok { border-left-color:var(--wg-accent); }
+  .wg .wg-note b { display:block; text-transform:uppercase; font-size:.7rem;
+                   letter-spacing:.1em; color:#A8620A; margin-bottom:.3rem; }
+  .wg .wg-note.ok b { color:var(--wg-accent); }
+  .wg .pill { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+              padding:.15em .45em; border-radius:3px; background:var(--wg-soft); }
+  @media (prefers-color-scheme: dark) {
+    .wg { --wg-line:#2a3a33; --wg-soft:#18211d; --wg-muted:#8a9a92; --wg-accent:#4FBFA4; }
+    .wg .wg-strip div, .wg .wg-note { background:#141c19; }
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="wg">
+
+  <h1>{{ _("Warehouse Operating Guide") }}</h1>
+  <p class="wg-lede">
+    How goods move through the warehouse in this system, from a client's advance notice to
+    the charge on their invoice. Every screen named here is in the
+    <strong>Warehouse 3PL</strong> workspace.
+  </p>
+
+  <dl class="wg-strip">
+    {%- for label, value in counts.items() %}
+    <div><dt>{{ _(label) }}</dt><dd>{{ value }}</dd></div>
+    {%- endfor %}
+  </dl>
+
+  <h2>{{ _("Your storage sites") }}</h2>
+  <div class="wg-scroll">
+    <table>
+      <thead><tr>
+        <th>{{ _("Location") }}</th><th>{{ _("Warehouse") }}</th>
+        <th>{{ _("Capacity (CBM)") }}</th><th>{{ _("Status") }}</th>
+      </tr></thead>
+      <tbody>
+      {%- for l in locations %}
+        <tr>
+          <td><a href="/app/warehouse-location/{{ l.name | urlencode }}"><code>{{ l.name }}</code></a></td>
+          <td>{{ l.warehouse }}</td>
+          <td>{{ "{:,.0f}".format(l.max_volume_cbm or 0) }}</td>
+          <td><span class="pill">{{ l.status }}</span></td>
+        </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    A location code reads <code>ZONE-AISLE-RACK-LEVEL-BIN</code>. Each site starts with one
+    bulk location covering the whole floor. Add more locations under the same warehouse when
+    you want putaway directed to specific racks.
+  </p>
+
+  <h2>{{ _("Your warehousing clients") }}</h2>
+  <div class="wg-scroll">
+    <table>
+      <thead><tr>
+        <th>{{ _("Code") }}</th><th>{{ _("Client") }}</th>
+        <th>{{ _("Status") }}</th><th>{{ _("Rate card") }}</th>
+      </tr></thead>
+      <tbody>
+      {%- for c in clients %}
+        <tr>
+          <td><code>{{ c.client_code or "—" }}</code></td>
+          <td><a href="/app/customer/{{ c.name | urlencode }}">{{ c.name }}</a></td>
+          <td><span class="pill">{{ c.client_status or "—" }}</span></td>
+          <td>
+            {%- if c.active_rate_card %}
+              <a href="/app/rate-card/{{ c.active_rate_card | urlencode }}">{{ _("View") }}</a>
+            {%- else %}—{%- endif %}
+          </td>
+        </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    To take on a new client, tick <strong>Is 3PL Client</strong> on the customer, give them a
+    code, and create a rate card.
+  </p>
+
+  <h2>{{ _("Goods coming in") }}</h2>
+
+  <div class="wg-step">
+    <div class="n">1</div>
+    <div>
+      <h3>{{ _("Advance notice") }} — <em>ASN</em></h3>
+      <p>
+        Raise an ASN when a client tells you a shipment is on the way, before it reaches the
+        gate. Record what is expected and how much, plus lot and expiry where it matters.
+        This step is optional — goods that arrive unannounced can be received directly.
+      </p>
+    </div>
+  </div>
+
+  <div class="wg-step">
+    <div class="n">2</div>
+    <div>
+      <h3>{{ _("Receiving at the dock") }} — <em>Receiving</em></h3>
+      <p>
+        Count what actually arrived: received quantity, rejected quantity, and the condition
+        of each line — Good, Damaged, Short or Over. Name the staging area the goods stand in.
+      </p>
+      <div class="wg-auto">
+        {{ _("On submit the system") }}:
+        <ul>
+          <li>{{ _("books the stock into the staging warehouse") }}</li>
+          <li>{{ _("raises a putaway task for every line") }}</li>
+          <li>{{ _("marks the ASN received and updates the job record") }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="wg-step">
+    <div class="n">3</div>
+    <div>
+      <h3>{{ _("Putaway to the racks") }} — <em>Putaway Task</em></h3>
+      <p>
+        Each task carries a suggested destination chosen from the client's inventory policy —
+        temperature zone, dedicated area, remaining weight and volume. Override it if the
+        floor says otherwise. Completing the task moves the stock and makes it pickable.
+      </p>
+    </div>
+  </div>
+
+  <h2>{{ _("Goods going out") }}</h2>
+
+  <div class="wg-step">
+    <div class="n">4</div>
+    <div>
+      <h3>{{ _("The client's order") }} — <em>Client Order</em></h3>
+      <p>{{ _("Record what the client wants shipped, the ship-by date and a priority.") }}</p>
+    </div>
+  </div>
+
+  <div class="wg-step">
+    <div class="n">5</div>
+    <div>
+      <h3>{{ _("Planning the run") }} — <em>Wave</em></h3>
+      <p>
+        Group orders going out together, typically everything for one carrier cut-off.
+        Releasing the wave reserves stock oldest-first and raises pick tasks with the exact
+        locations to pull from.
+      </p>
+    </div>
+  </div>
+
+  <div class="wg-step">
+    <div class="n">6</div>
+    <div>
+      <h3>{{ _("Picking and packing") }} — <em>Pick Task</em>, <em>Pack Task</em></h3>
+      <p>
+        The picker marks each line Picked or Short; start and finish times are recorded.
+        Completing the pick raises the pack task. Record cartons and total weight there.
+      </p>
+      <div class="wg-auto">
+        {{ _("Completing the pack task creates the outbound delivery note and marks the order shipped.") }}
+      </div>
+    </div>
+  </div>
+
+  <div class="wg-step">
+    <div class="n">7</div>
+    <div>
+      <h3>{{ _("Handing over") }} — <em>Delivery Note</em></h3>
+      <p>
+        Add the carrier, tracking number and bill of lading. The delivery note carries no
+        goods value — the stock was never yours — so it moves inventory without touching
+        revenue.
+      </p>
+    </div>
+  </div>
+
+  <h2>{{ _("Charging for the work") }}</h2>
+
+  {%- if storage_rate %}
+  <div class="wg-note ok">
+    <b>{{ _("Current storage rate") }}</b>
+    <p style="margin:0">
+      {{ _("Storage is priced at") }} <strong>{{ storage_rate.rate }}</strong>
+      {{ storage_rate.uom }} {{ _("on the active rate cards.") }}
+    </p>
+  </div>
+  {%- endif %}
+
+  <p>
+    A <strong>rate card</strong> per client turns warehouse activity into money. Each line is
+    an activity, a unit and a rate, with an optional minimum charge. Cards carry an
+    effective-from date, so a price change is a new card rather than an edit that rewrites
+    history. Only cards marked <strong>Active</strong> price anything.
+  </p>
+
+  <div class="wg-note">
+    <b>{{ _("Two things to know about billing") }}</b>
+    <p>
+      <strong>{{ _("Handling activities are currently set to zero.") }}</strong>
+      {{ _("Receiving, picking, packing and shipping have no per-unit rate on the active cards, so no charge line is written for them. Handling continues to be invoiced as a lump sum per shipment, as before. Fill in the rates on the rate card to switch that on.") }}
+    </p>
+    <p style="margin-bottom:0">
+      <strong>{{ _("Storage is not charged automatically.") }}</strong>
+      {{ _("Nothing in the system raises a monthly storage charge on its own. Add it as a Billing Transaction at the end of each period using the rate above.") }}
+    </p>
+  </div>
+
+  <h2>{{ _("What this replaces") }}</h2>
+  <div class="wg-scroll">
+    <table>
+      <thead><tr><th>{{ _("Old screen") }}</th><th>{{ _("Use instead") }}</th></tr></thead>
+      <tbody>
+        <tr><td>Receipt Note</td><td>ASN, then Receiving</td></tr>
+        <tr><td>Warehouse Unit</td><td>Warehouse Location</td></tr>
+        <tr><td>Warehouse Job</td><td>Warehouse Job Record</td></tr>
+        <tr><td>Warehouse Rental</td><td>{{ _("Rate card storage line, billed per period") }}</td></tr>
+        <tr><td>Package Details</td><td>{{ _("Receiving lines, per item") }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>{{ _("Existing records stay where they are and remain readable. Nothing was deleted.") }}</p>
+
+  <h2>{{ _("Where else to look") }}</h2>
+  <ul>
+    <li><a href="/app/warehouse-3pl">{{ _("Warehouse 3PL workspace") }}</a> — {{ _("every screen in this guide") }}</li>
+    <li><a href="https://docs-site-brown-six.vercel.app" rel="noopener">{{ _("Full step-by-step user guide") }}</a></li>
+    <li>{{ _("Enfono Technologies supports this module. Quote the screen name and document number and any charge can be traced back through the job record.") }}</li>
+  </ul>
+
+</div>
+{% endblock %}
