@@ -13,6 +13,15 @@ docs_url = "https://docs-site-brown-six.vercel.app"
 
 required_apps = ["erpnext"]
 
+# In-ERP operating guide.
+# The controller/template pair is warehouse_3pl/www/warehouse_guide.{py,html} -- the
+# filename must stay underscored. A hyphen is not a valid Python module name, so Frappe
+# cannot import the controller, skips it silently, and serves the page to Guest with a 200,
+# bypassing its permission check entirely. The hyphenated public URL comes from here instead.
+website_route_rules = [
+	{"from_route": "/warehouse-guide", "to_route": "warehouse_guide"},
+]
+
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{
