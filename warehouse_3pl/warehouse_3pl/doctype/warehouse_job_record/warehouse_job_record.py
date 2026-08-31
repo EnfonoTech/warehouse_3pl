@@ -230,6 +230,8 @@ def make_sales_invoice(job_name):
     si.customer = job.client
     si.company = job.company
     si.custom_warehouse_job = job.name
+    si.posting_date = frappe.utils.today()
+    si.due_date = frappe.utils.add_days(si.posting_date, 30)
 
     for bt, code in resolved:
         si.append("items", {
@@ -238,6 +240,16 @@ def make_sales_invoice(job_name):
             "qty": bt.qty or 1,
             "rate": bt.rate or 0,
         })
+
+    # This doc is handed straight to the browser by frappe.model.sync, so it has to arrive
+    # COMPLETE. The client validates mandatory fields before it ever posts, and a row built
+    # from item_code alone has no item_name, uom, income_account or cost_center -- the user
+    # got "Mandatory fields required in table Items, Row 1 Item Name UOM Income Account Cost
+    # Centre" the moment they pressed Save. Server-side insert() would have filled these in;
+    # the UI never gets that far, so fill them here.
+    si.set_missing_values(for_validate=True)
+    si.set_taxes()
+    si.calculate_taxes_and_totals()
 
     return si
 
