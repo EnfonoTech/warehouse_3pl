@@ -26,7 +26,8 @@
    "label": "Series",
    "options": "PICK-.YYYY.-.#####",
    "hidden": 1,
-   "set_only_once": 1
+   "set_only_once": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "wave",
